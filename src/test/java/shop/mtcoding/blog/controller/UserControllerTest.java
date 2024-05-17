@@ -21,6 +21,11 @@ import shop.mtcoding.blog.user.SessionUser;
 import shop.mtcoding.blog.user.UserRequest;
 import shop.mtcoding.blog.user.UserResponse;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 /**
  * 1. 통합테스트 (스프링의 모든 빈을 IoC에 등록하고 테스트 하는 것)
  * 2. 배포직전 최종테스트
@@ -36,6 +41,21 @@ public class UserControllerTest {
     private MockMvc mvc;
 
     @Test
+    public void _test(){
+        // given
+        Integer id = 1;
+
+        // when
+
+
+        //eye : 눈으로 한 번 검증
+
+
+        // then
+
+    }
+
+    @Test
     public void join_test() throws Exception {
         // given
         UserRequest.JoinDTO reqDTO = new UserRequest.JoinDTO();
@@ -48,7 +68,7 @@ public class UserControllerTest {
 
         // when
         ResultActions actions = mvc.perform(
-                MockMvcRequestBuilders.post("/join")
+                post("/join")
                         .content(reqBody)
                         .contentType(MediaType.APPLICATION_JSON)
         );
@@ -60,71 +80,65 @@ public class UserControllerTest {
         //System.out.println("statusCode : "+statusCode);
 
         // then
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.status").value(200));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.msg").value("성공"));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.body.id").value(4));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.body.username").value("haha"));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.body.email").value("haha@nate.com"));
+        actions.andExpect(jsonPath("$.status").value(200));
+        actions.andExpect(jsonPath("$.msg").value("성공"));
+        actions.andExpect(jsonPath("$.body.id").value(4));
+        actions.andExpect(jsonPath("$.body.username").value("haha"));
+        actions.andExpect(jsonPath("$.body.email").value("haha@nate.com"));
     }
 
     @Test
-    public void join_username_same_fail_test() throws Exception {
+    public void login_fail_test() throws Exception {
         // given
-        UserRequest.JoinDTO reqDTO = new UserRequest.JoinDTO();
+        UserRequest.LoginDTO reqDTO = new UserRequest.LoginDTO();
         reqDTO.setUsername("ssar");
-        reqDTO.setPassword("1234");
-        reqDTO.setEmail("ssar@nate.com");
+        reqDTO.setPassword("12345");
 
         String reqBody = om.writeValueAsString(reqDTO);
-        //System.out.println("reqBody : "+reqBody);
 
         // when
         ResultActions actions = mvc.perform(
-                MockMvcRequestBuilders.post("/join")
+                post("/login")
                         .content(reqBody)
                         .contentType(MediaType.APPLICATION_JSON)
         );
 
-        // eye
-        String respBody = actions.andReturn().getResponse().getContentAsString();
-        //int statusCode = actions.andReturn().getResponse().getStatus();
-        //System.out.println("respBody : "+respBody);
-        //System.out.println("statusCode : "+statusCode);
-
         // then
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.status").value(400));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.msg").value("중복된 유저네임입니다"));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.body").isEmpty());
+        actions.andExpect(status().isUnauthorized()); // header 검증
+
+        actions.andExpect(jsonPath("$.status").value(401));
+        actions.andExpect(jsonPath("$.msg").value("인증되지 않았습니다"));
+        actions.andExpect(jsonPath("$.body").isEmpty());
     }
 
     // {"status":400,"msg":"영문/숫자 2~20자 이내로 작성해주세요 : username","body":null}
     @Test
-    public void join_username_valid_fail_test() throws Exception {
+    public void login_success_test() throws Exception {
         // given
-        UserRequest.JoinDTO reqDTO = new UserRequest.JoinDTO();
-        reqDTO.setUsername("김완준");
+        UserRequest.LoginDTO reqDTO = new UserRequest.LoginDTO();
+        reqDTO.setUsername("ssar");
         reqDTO.setPassword("1234");
-        reqDTO.setEmail("ssar@nate.com");
 
         String reqBody = om.writeValueAsString(reqDTO);
-        //System.out.println("reqBody : "+reqBody);
 
         // when
         ResultActions actions = mvc.perform(
-                MockMvcRequestBuilders.post("/join")
+                post("/login")
                         .content(reqBody)
                         .contentType(MediaType.APPLICATION_JSON)
         );
-        SessionUser sessionUser = (SessionUser)actions.andReturn().getModelAndView().getModel().get("sessionUser");
-        // eye
         String respBody = actions.andReturn().getResponse().getContentAsString();
-        //int statusCode = actions.andReturn().getResponse().getStatus();
         //System.out.println("respBody : "+respBody);
-        //System.out.println("statusCode : "+statusCode);
+        String jwt = actions.andReturn().getResponse().getHeader("Authorization");
+        System.out.println("jwt = " + jwt);
 
         // then
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.status").value(400));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.msg").value("영문/숫자 2~20자 이내로 작성해주세요 : username"));
-        actions.andExpect(MockMvcResultMatchers.jsonPath("$.body").isEmpty());
+        actions.andExpect(status().isOk()); // header 검증
+        actions.andExpect(result -> result.getResponse().getHeader("Authorization").contains("Bearer " + jwt));
+
+
+        actions.andExpect(jsonPath("$.status").value(200));
+        actions.andExpect(jsonPath("$.msg").value("성공"));
+        actions.andExpect(jsonPath("$.body").isEmpty());
     }
 }
