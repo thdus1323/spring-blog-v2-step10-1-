@@ -44,7 +44,7 @@ public class MyExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> ex500(Exception e){
+    public ResponseEntity<?> unknown(Exception e){
         ApiUtil<?> apiUtil = new ApiUtil<>(500, "오류 : 관리자에게 문의하세요");
         log.error(e.getMessage());
         return new ResponseEntity<>(apiUtil, HttpStatus.INTERNAL_SERVER_ERROR);

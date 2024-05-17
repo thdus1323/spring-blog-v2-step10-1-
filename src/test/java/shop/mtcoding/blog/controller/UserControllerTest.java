@@ -1,25 +1,18 @@
 package shop.mtcoding.blog.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.ResultMatcher;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.web.client.RestTemplate;
-import shop.mtcoding.blog._core.utils.ApiUtil;
-import shop.mtcoding.blog.user.SessionUser;
+import shop.mtcoding.blog._core.utils.JwtUtil;
+import shop.mtcoding.blog.user.User;
 import shop.mtcoding.blog.user.UserRequest;
-import shop.mtcoding.blog.user.UserResponse;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,20 +33,42 @@ public class UserControllerTest {
     @Autowired
     private MockMvc mvc;
 
+    private static String jwt;
+
+    @BeforeAll
+    public static void setUp() {
+        jwt = JwtUtil.create(
+                User.builder()
+                        .id(1)
+                        .username("ssar")
+                        .password("1234")
+                        .email("ssar@nate.com")
+                        .build());
+    }
+
     @Test
-    public void _test(){
+    public void userinfo_test() throws Exception {
         // given
         Integer id = 1;
 
         // when
+        ResultActions actions = mvc.perform(
+                get("/api/users/" + id)
+                        .header("Authorization", "Bearer " + jwt)
+        );
 
-
-        //eye : 눈으로 한 번 검증
-
+        // eye
+        String respBody = actions.andReturn().getResponse().getContentAsString();
+        System.out.println("respBody : " + respBody);
 
         // then
-
+        actions.andExpect(jsonPath("$.status").value(200));
+        actions.andExpect(jsonPath("$.msg").value("성공"));
+        actions.andExpect(jsonPath("$.body.id").value(1));
+        actions.andExpect(jsonPath("$.body.username").value("ssar"));
+        actions.andExpect(jsonPath("$.body.email").value("ssar@nate.com"));
     }
+
 
     @Test
     public void join_test() throws Exception {
@@ -76,7 +91,7 @@ public class UserControllerTest {
         // eye
         String respBody = actions.andReturn().getResponse().getContentAsString();
         //int statusCode = actions.andReturn().getResponse().getStatus();
-        System.out.println("respBody : "+respBody);
+        System.out.println("respBody : " + respBody);
         //System.out.println("statusCode : "+statusCode);
 
         // then
@@ -88,30 +103,67 @@ public class UserControllerTest {
     }
 
     @Test
-    public void login_fail_test() throws Exception {
+    public void join_username_same_fail_test() throws Exception {
         // given
-        UserRequest.LoginDTO reqDTO = new UserRequest.LoginDTO();
+        UserRequest.JoinDTO reqDTO = new UserRequest.JoinDTO();
         reqDTO.setUsername("ssar");
-        reqDTO.setPassword("12345");
+        reqDTO.setPassword("1234");
+        reqDTO.setEmail("ssar@nate.com");
 
         String reqBody = om.writeValueAsString(reqDTO);
+        //System.out.println("reqBody : "+reqBody);
 
         // when
         ResultActions actions = mvc.perform(
-                post("/login")
+                post("/join")
                         .content(reqBody)
                         .contentType(MediaType.APPLICATION_JSON)
         );
 
-        // then
-        actions.andExpect(status().isUnauthorized()); // header 검증
+        // eye
+        String respBody = actions.andReturn().getResponse().getContentAsString();
+        //int statusCode = actions.andReturn().getResponse().getStatus();
+        //System.out.println("respBody : "+respBody);
+        //System.out.println("statusCode : "+statusCode);
 
-        actions.andExpect(jsonPath("$.status").value(401));
-        actions.andExpect(jsonPath("$.msg").value("인증되지 않았습니다"));
+        // then
+        actions.andExpect(jsonPath("$.status").value(400));
+        actions.andExpect(jsonPath("$.msg").value("중복된 유저네임입니다"));
         actions.andExpect(jsonPath("$.body").isEmpty());
     }
 
     // {"status":400,"msg":"영문/숫자 2~20자 이내로 작성해주세요 : username","body":null}
+    @Test
+    public void join_username_valid_fail_test() throws Exception {
+        // given
+        UserRequest.JoinDTO reqDTO = new UserRequest.JoinDTO();
+        reqDTO.setUsername("김완준");
+        reqDTO.setPassword("1234");
+        reqDTO.setEmail("ssar@nate.com");
+
+        String reqBody = om.writeValueAsString(reqDTO);
+        //System.out.println("reqBody : "+reqBody);
+
+        // when
+        ResultActions actions = mvc.perform(
+                post("/join")
+                        .content(reqBody)
+                        .contentType(MediaType.APPLICATION_JSON)
+        );
+
+        // eye
+        String respBody = actions.andReturn().getResponse().getContentAsString();
+        //int statusCode = actions.andReturn().getResponse().getStatus();
+        //System.out.println("respBody : "+respBody);
+        //System.out.println("statusCode : "+statusCode);
+
+
+        // then
+        actions.andExpect(jsonPath("$.status").value(400));
+        actions.andExpect(jsonPath("$.msg").value("영문/숫자 2~20자 이내로 작성해주세요 : username"));
+        actions.andExpect(jsonPath("$.body").isEmpty());
+    }
+
     @Test
     public void login_success_test() throws Exception {
         // given
@@ -141,4 +193,30 @@ public class UserControllerTest {
         actions.andExpect(jsonPath("$.msg").value("성공"));
         actions.andExpect(jsonPath("$.body").isEmpty());
     }
+
+    @Test
+    public void login_fail_test() throws Exception {
+        // given
+        UserRequest.LoginDTO reqDTO = new UserRequest.LoginDTO();
+        reqDTO.setUsername("ssar");
+        reqDTO.setPassword("12345");
+
+        String reqBody = om.writeValueAsString(reqDTO);
+
+        // when
+        ResultActions actions = mvc.perform(
+                post("/login")
+                        .content(reqBody)
+                        .contentType(MediaType.APPLICATION_JSON)
+        );
+
+        // then
+        actions.andExpect(status().isUnauthorized()); // header 검증
+
+        actions.andExpect(jsonPath("$.status").value(401));
+        actions.andExpect(jsonPath("$.msg").value("인증되지 않았습니다"));
+        actions.andExpect(jsonPath("$.body").isEmpty());
+    }
+
+
 }

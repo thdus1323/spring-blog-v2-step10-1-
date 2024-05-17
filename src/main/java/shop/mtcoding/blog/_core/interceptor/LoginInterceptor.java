@@ -40,7 +40,7 @@ public class LoginInterceptor implements HandlerInterceptor{
         }catch (JWTDecodeException e){
             throw new Exception401("토큰이 유효하지 않습니다");
         }catch (Exception e){
-            throw new Exception500(e.getMessage());
+            throw new Exception(e.getMessage());
         }
     }
 }
